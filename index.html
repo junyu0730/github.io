@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>配当金シミュレーション</title>
+  <style>
+    :root { color-scheme: light; --navy: #17324d; --blue: #2f80ed; --bg: #f4f7fb; --text: #243447; --muted: #65758b; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; color: var(--text); background: var(--bg); }
+    .container { width: min(960px, calc(100% - 32px)); margin: 0 auto; }
+    header { padding: 48px 0 32px; background: linear-gradient(135deg, #17324d, #2563a6); color: white; }
+    h1 { margin: 0 0 10px; font-size: clamp(1.8rem, 5vw, 2.8rem); }
+    header p { margin: 0; opacity: .86; }
+    main { padding: 28px 0 48px; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .card { background: white; border-radius: 16px; padding: 24px; box-shadow: 0 8px 24px rgba(23, 50, 77, .08); }
+    h2 { margin: 0 0 20px; font-size: 1.25rem; }
+    label { display: block; margin: 16px 0 7px; font-weight: 700; }
+    input { width: 100%; padding: 12px 14px; border: 1px solid #cbd5e1; border-radius: 9px; font: inherit; }
+    input:focus { outline: 3px solid rgba(47, 128, 237, .18); border-color: var(--blue); }
+    .hint { margin: 5px 0 0; color: var(--muted); font-size: .86rem; }
+    button { width: 100%; margin-top: 22px; padding: 13px 18px; border: 0; border-radius: 9px; background: var(--blue); color: white; font: inherit; font-weight: 700; cursor: pointer; }
+    button:hover { background: #1769d1; }
+    .result { display: grid; gap: 12px; }
+    .result-row { display: flex; justify-content: space-between; gap: 16px; padding: 14px 0; border-bottom: 1px solid #e7edf4; }
+    .result-row:last-child { border-bottom: 0; }
+    .result-row strong { color: var(--navy); text-align: right; }
+    .primary { margin: 4px 0 18px; padding: 18px; border-radius: 12px; background: #eaf3ff; text-align: center; }
+    .primary span { display: block; color: var(--muted); font-size: .9rem; }
+    .primary strong { display: block; margin-top: 4px; color: var(--blue); font-size: 2rem; }
+    .note { margin: 20px 0 0; color: var(--muted); font-size: .85rem; line-height: 1.6; }
+    footer { padding: 0 0 30px; text-align: center; color: var(--muted); font-size: .82rem; }
+    @media (max-width: 700px) { .grid { grid-template-columns: 1fr; } header { padding-top: 34px; } }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="container">
+      <h1>配当金シミュレーション</h1>
+      <p>保有株数と配当利回りから、受け取れる配当金の目安を計算します。</p>
+    </div>
+  </header>
+
+  <main class="container">
+    <div class="grid">
+      <section class="card">
+        <h2>条件を入力</h2>
+        <form id="simulator-form">
+          <label for="price">株価（円）</label>
+          <input id="price" type="number" min="0" step="1" value="1000" required>
+
+          <label for="shares">保有株数（株）</label>
+          <input id="shares" type="number" min="0" step="1" value="100" required>
+
+          <label for="yield">年間配当利回り（%）</label>
+          <input id="yield" type="number" min="0" step="0.01" value="3" required>
+          <p class="hint">例：配当利回り3%なら「3」と入力</p>
+
+          <label for="tax">税率（%）</label>
+          <input id="tax" type="number" min="0" max="100" step="0.1" value="20.315" required>
+          <button type="submit">計算する</button>
+        </form>
+      </section>
+
+      <section class="card" aria-live="polite">
+        <h2>シミュレーション結果</h2>
+        <div class="primary">
+          <span>税引後・年間配当金</span>
+          <strong id="net-annual">0円</strong>
+        </div>
+        <div class="result">
+          <div class="result-row"><span>投資元本</span><strong id="principal">0円</strong></div>
+          <div class="result-row"><span>1株あたり年間配当</span><strong id="per-share">0円</strong></div>
+          <div class="result-row"><span>税引前年間配当</span><strong id="gross-annual">0円</strong></div>
+          <div class="result-row"><span>税引後・月平均</span><strong id="net-monthly">0円</strong></div>
+        </div>
+        <p class="note">※この結果は入力値に基づく概算です。実際の配当金、税金、受取時期などとは異なる場合があります。</p>
+      </section>
+    </div>
+  </main>
+
+  <footer>練習用の配当金シミュレーションサイト</footer>
+
+  <script>
+    const yen = new Intl.NumberFormat('ja-JP', { style: 'currency', currency: 'JPY', maximumFractionDigits: 0 });
+    const $ = (id) => document.getElementById(id);
+
+    function calculate() {
+      const price = Number($('price').value) || 0;
+      const shares = Number($('shares').value) || 0;
+      const annualYield = (Number($('yield').value) || 0) / 100;
+      const taxRate = (Number($('tax').value) || 0) / 100;
+      const principal = price * shares;
+      const grossAnnual = principal * annualYield;
+      const netAnnual = grossAnnual * (1 - taxRate);
+
+      $('principal').textContent = yen.format(principal);
+      $('per-share').textContent = yen.format(price * annualYield);
+      $('gross-annual').textContent = yen.format(grossAnnual);
+      $('net-annual').textContent = yen.format(netAnnual);
+      $('net-monthly').textContent = yen.format(netAnnual / 12);
+    }
+
+    $('simulator-form').addEventListener('submit', (event) => {
+      event.preventDefault();
+      calculate();
+    });
+    calculate();
+  </script>
+</body>
+</html>
